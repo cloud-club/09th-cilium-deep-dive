@@ -1,4 +1,6 @@
-# 쿠버네티스 네트워크
+# 📚 내용 정리
+
+## 쿠버네티스 네트워크
 
 Kubernetes는 Pod 간 직접통신이 가능하도록 설계되어 있다.
 
@@ -77,7 +79,8 @@ netfilter에 포함된 기능으로, 네트워크 연결의 상태를 추적하�
         
     - 멀티노드 Pod 네트워크
         
-        ![image.png](attachment:1379a3ba-8e80-46a0-9e8e-7303ebb363bf:image.png)
+        <img width="1352" height="734" alt="image" src="https://github.com/user-attachments/assets/ccb1ed72-821d-473c-a1b1-70b8b082a1cd" />
+
         
         마찬가지로 Pod에서 Node쪽 veth로 연결. Node에서 라우팅 테이블을 보고 IP를 찾음. 
         (그림에 있는 NAT는 외부 통신용 SNAT)
@@ -186,3 +189,6 @@ netfilter에 포함된 기능으로, 네트워크 연결의 상태를 추적하�
 ---
 
 출처) [https://medium.com/finda-tech/kubernetes-네트워크-정리-fccd4fd0ae6](https://medium.com/finda-tech/kubernetes-%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%81%AC-%EC%A0%95%EB%A6%AC-fccd4fd0ae6)
+
+
+# 🤔 궁금한 점
