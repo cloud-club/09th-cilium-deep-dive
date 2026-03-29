@@ -217,9 +217,9 @@ Pod
     기존: Service로 들어온 패킷을 iptables, IPVS 가 처리
    
     eBPF: eBPF에서는 이 Service 처리를 함. BPF map + eBPF program으로 처리
-    - TC/XDP hook에서 eBPF가 패킷을 직접 처리
+    - 커널내부 TC/XDP hook에서 eBPF가 패킷을 직접 처리
     - BPF map: Service → Pod 리스트 저장
-    - eBPF program: backend 선택 + rewrite
+    - eBPF program: backend 선택 + rewrite(Service에 온 패킷 ip를 pod ip로 변환)
     - 라우팅, 정책, encapsulation 여부를 결정하고 전달
 
 4. 패킷 전달 층 (패킷이 어떻게 이동하는지)
