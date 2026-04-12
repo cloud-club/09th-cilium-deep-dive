@@ -100,8 +100,10 @@ Pod A (Node 1)
   → Pod B (Node 2)
 ```
 # 실습1. eBPF 알아보기
+```bpftrace```: eBPF를 이용해서 커널/애플리케이션 **동작을 실시간으로 관찰하는 tracing 도구** 입니다.
+eBPF가 커널에서 어떻게 동작하는지 실습
 ```bash
-bpftrace 문법구조
+bpftrace 문법구조, 명령어 구조
 
 probe이름 /필터/ { 액션 }
 
@@ -112,21 +114,25 @@ probe: 무엇을 추적할지
 interval:s:1        { printf("hi\n"); }
 ↑                     ↑
 언제 실행할지          뭘 할지
-
+```
+```bash
+# 1. 'Helo eBPF' 출력
 sudo bpftrace -e 'interval:s:1 { printf("Hello eBPF!\n"); }'
 
-# 시스템에서 실행 중인 모든 execve (프로그램 실행) 감지
+# 2. 시스템에서 실행 중인 모든 execve (프로그램 실행) 감지
 sudo bpftrace -e 'tracepoint:syscalls:sys_enter_execve { printf("%s → %s\n", comm, str(args->filename)); }'
 ```
+다른 창에서 `ls`, `ps` 실행시 실시간으로 결과가 출력됨
 <img width="2048" height="239" alt="image" src="https://github.com/user-attachments/assets/947b3de3-b305-409b-b5ff-63aff7605db2" />
 
 ```bash
-# 어떤 프로세스가 어떤 파일을 여는지 실시간 확인(open 시스템 콜)
+# 도메인 프로세스 실시간 확인(open 시스템 콜)
 sudo bpftrace -e '
 tracepoint:syscalls:sys_enter_openat {
     printf("PID:%-6d %-16s %s\n", pid, comm, str(args->filename));
 }'
 
+# google.com 입력
 curl google.com
 
 curl → /etc/passwd        # 사용자 정보 확인
@@ -134,7 +140,7 @@ curl → /home/ubuntu/.curlrc  # curl 설정파일
 curl → /etc/resolv.conf   # DNS 서버 주소
 curl → /etc/hosts         # 로컬 DNS
 curl → /etc/gai.conf      # IPv4/IPv6 우선순위 설정
-DNS 조회전에 많은 파일을 열어보는것을 볼 수 있음
+# DNS 조회전에 커널에서 많은 파일을 열어보는것을 확인할 수 있음
 ```
 
 > ❓ irqbalance 중간중간 뜨는 이유?
@@ -153,7 +159,7 @@ DNS 조회전에 많은 파일을 열어보는것을 볼 수 있음
 
 ### 명령어를 입력해보자
 ```bash
-# 슬로우 파일 읽기 감지
+# 슬로우 파일 읽기 감지 / @start[tid]: eBPF map 저장소에 입력
 sudo bpftrace -e '
 tracepoint:syscalls:sys_enter_read { @start[tid] = nsecs; }
 
@@ -168,8 +174,6 @@ tracepoint:syscalls:sys_exit_read
     delete(@start[tid]);
 }'
 
-@start[tid]: eBPF map 저장소
-
 # latency 히스토그램 분석
 sudo bpftrace -e '
 tracepoint:syscalls:sys_enter_read { @start[tid] = nsecs; }
@@ -181,7 +185,8 @@ tracepoint:syscalls:sys_exit_read
     delete(@start[tid]);
 }'
 
-Attaching 2 probes... # 컴파일 중!!!
+Attaching 2 probes... # 컴파일 중!!! 왜 하는지는 아래 설명
+# eBPF는 커널의 헤더 정보를 읽어옴. 
 
 @lat_us:
 [0]                   44 |@@@                                                 |
@@ -220,6 +225,16 @@ Attaching 1 probe...
 '각프로세스 이름: 시스템콜 호출 횟수값'
 ```
 
+> 🤔 컴파일을 하는 이유 알아보기
+>
+> eBPF는 **커널 헤더**의 정보를 읽어와 현재 실행중인 커널에 맞춰서 즉석에서 eBPF프로그램을 컴파일한다.
+> 컴파일러는 tack_struct와 같은 커널 내부 데이터 구조체의 정확한 정의를 알아야하기 때문에 실행중인 커널과 버전이 일치하는 헤더가 필요함. 
+>
+> 현재 Ubuntu 22.04는 커널 5.15 BTF(BPF Type Format)가 기본으로 내장되어있음
+>
+> 예전에는 bpftrace가 커널헤더파일을 읽어서 구조체를 파악했다면
+bpftrace → /sys/kernel/btf/vmlinux 읽어서 구조체 파악
+
 ```bash
 # 패킷 드롭 감지 TCP연결 추적
 sudo bpftrace -e '
@@ -255,90 +270,6 @@ curl → DNS 조회 (github.com → 20.200.245.247)
      차단 → 패킷 드롭 ❌
 ```
 <img width="1380" height="1136" alt="image" src="https://github.com/user-attachments/assets/851aad42-0b26-4528-b4d8-bc1409e9d805" />
-
-
-# **실습2. NetworkPolicy로 직접 확인하기**
-
-아래 실습은 Ubuntu 22.04 (커널 5.15), kind 기반 Cilium 1.17.2 환경에서 진행했습니다.
-
-### **환경 구성**
-
-```
-# Pod 생성
-kubectl run app --image=nginx --labels="app=web"
-kubectl run client --image=curlimages/curl --command -- sleep 9999
-
-# Pod IP 확인
-kubectl get pods -o wide
-# app: 10.244.1.254 / client: 10.244.1.9
-```
-
-### **Step 1 — 기본 통신 확인**
-
-```
-kubectl exec client -- curl -s --connect-timeout 3 http://10.244.1.254
-```
-
-결과
-
-```
-<!DOCTYPE html><html>...Welcome to nginx!...
-```
-
-NetworkPolicy가 없으면 같은 네임스페이스의 Pod 간 통신은 기본적으로 허용됩니다.
-
-### **Step 2 — deny-all 정책 적용**
-
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: deny-all
-spec:
-  podSelector:
-    matchLabels:
-      app: web
-  policyTypes:
-  - Ingress
-```
-
-Cilium Agent가 이 정책을 감지하면 해당 Pod의 TC Hook에 차단 규칙을 eBPF Map으로 적재합니다. iptables 규칙은 생성되지 않습니다.
-
-결과
-
-```
-command terminated with exit code 28 (타임아웃)
-```
-
-### **Step 3 — 특정 Pod만 허용**
-
-```
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-client-only
-spec:
-  podSelector:
-    matchLabels:
-      app: web
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          run: client
-```
-
-결과
-
-```
-Welcome to nginx! → client Pod에서만 접근 허용
-```
-
-**Cilium이기 때문에 가능한 것**
-
-NetworkPolicy는 쿠버네티스 표준 스펙입니다. 하지만 Cilium은 이를 eBPF로 구현하기 때문에 **iptables 규칙 없이 소켓 레벨에서 처리**합니다. Pod가 수천 개로 늘어나도 O(1) 해시 조회로 일정한 성능을 유지합니다.
 
 
 ---
