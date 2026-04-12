@@ -99,7 +99,7 @@ Pod A (Node 1)
   → 터널 디캡슐화
   → Pod B (Node 2)
 ```
-# **실습1. eBPF 알아보기 **
+# 실습1. eBPF 알아보기
 ```bash
 bpftrace 문법구조
 
@@ -219,6 +219,43 @@ Attaching 1 probe...
 @[irqbalance]: 100
 '각프로세스 이름: 시스템콜 호출 횟수값'
 ```
+
+```bash
+# 패킷 드롭 감지 TCP연결 추적
+sudo bpftrace -e '
+kprobe:tcp_connect { 
+    $sk = (struct sock *)arg0;
+    $dport = ($sk->__sk_common.skc_dport >> 8) | 
+             (($sk->__sk_common.skc_dport & 0xff) << 8);
+    printf("PID:%-6d %-16s → %s:%d\n",
+        pid, comm,
+        ntop($sk->__sk_common.skc_daddr),
+        $dport);
+}'
+# 명령어 cilium이 Pod에서 나가는 TCP 연결을 정확히 잡음
+ 
+# 입력
+curl https://google.com
+curl https://github.com
+
+# 결과
+curl → 142.250.197.142:443   ← google.com IP, HTTPS(443)
+curl → 20.200.245.247:443    ← github.com IP, HTTPS(443)
+DNS 조회가 끝나고 다음에 TCP를 연결하는 시점에 eBPF에 잡음
+```
+
+```bash
+curl → DNS 조회 (github.com → 20.200.245.247)
+              ↓
+     tcp_connect 호출  ← eBPF가 여기서 잡음
+              ↓
+   Cilium: NetworkPolicy 확인
+              ↓
+     허용 → 연결 진행 ✅
+     차단 → 패킷 드롭 ❌
+```
+<img width="1380" height="1136" alt="image" src="https://github.com/user-attachments/assets/851aad42-0b26-4528-b4d8-bc1409e9d805" />
+
 
 # **실습2. NetworkPolicy로 직접 확인하기**
 
