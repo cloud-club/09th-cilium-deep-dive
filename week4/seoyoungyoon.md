@@ -19,6 +19,7 @@
 - Hubble로 전체 트래픽 가시성 확보
 
 # 2. Hook 지점
+패킷이 커널을 통과하는 여러 지점에 eBPF 프로그램을 붙여 datapath를 제어하는 메커니즘입니다.
 
 ### **패킷 흐름과 Hook 지점**
 
@@ -38,9 +39,26 @@ NIC (네트워크 카드)
 
 ### Hooks
 
-**TC Hook (tc ingress/egress)** 은 Cilium의 핵심 Hook입니다. 네트워크 인터페이스에서 패킷이 들어오고 나갈 때 실행되며, NetworkPolicy 적용, 암호화, SNAT/DNAT 등 대부분의 네트워킹 기능이 여기서 처리됩니다.
+**1. TC Hook (tc ingress/egress)**
+- Cilium의 핵심 Hook입니다.
+- 커널 네트워크 스택 중간에서 ingress/egress 양쪽에 hook이 존재합니다.
+- NetworkPolicy 적용, 암호화, SNAT/DNAT 등 대부분의 네트워킹 기능이 여기서 처리됩니다.
 
-**소켓 레벨 Hook (sock_ops)** 은 kube-proxy replacement의 핵심입니다. TCP 연결이 맺어지는 시점에 개입해 목적지를 수정함으로써, 패킷이 네트워크 스택을 완전히 통과하기 전에 로드밸런싱을 처리합니다. 이것이 iptables NAT보다 효율적인 이유입니다.
+**2. 소켓 레벨 Hook (sock_ops)** 
+- 애플리케이션이 사용하는 소켓 레벨에서 동작하는 hook입니다.
+- connect(), send(), recv() 같은 소켓 이벤트 시점에 동작합니다.
+- Service IP로 요청하면 → 실제 Pod IP로 연결을 바로 매핑 (kube-proxy replacement의 핵심)
+- TCP 연결이 맺어지는 시점에 개입해 목적지를 수정함으로써, 패킷이 네트워크 스택을 완전히 통과하기 전에 로드밸런싱을 처리합니다.
+
+**3.XDP (eXpress Data Path)**
+- NIC 드라이버 바로 아래에서 실행되는 가장 빠른 eBPF hook입니다.
+- 커널 네트워크 스택에 진입하기 전에 패킷을 drop/redirect 처리합니다.
+
+> 🤔 하나만 실행되는 구조인가?
+>
+> 여러 hook이 순차적으로 실행될 수 있다.
+> 같은 패킷이 모든 hook을 다 거치는것은 아님
+> 중간에 drop되는 이후 hook은 실행되지 않는다.
 
 # **3. kube-proxy replacement**
 
