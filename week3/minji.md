@@ -9,7 +9,7 @@
 
 
 ## Calico란?
-
+ 
 Kubernetes에서 가장 많이 쓰이는 CNI 플러그인으로 **네트워크 연결 + 네트워크 정책(보안)** 을 모두 담당한다.
 
 ### 다른 CNI(Flannel 등)와의 차별점
@@ -293,7 +293,7 @@ if !policyWasActive {
 
 ```go
 known  := policy != nil                                      // 정책 내용이 캐시에 있는가?
-active := arc.policyIDToEndpointKeys.ContainsKey(policyKey) // 매칭된 endpoint가 있는가?
+acti◊e := arc.policyIDToEndpointKeys.ContainsKey(policyKey) // 매칭된 endpoint가 있는가?
 ```
 
 | 상태 | 동작 |
