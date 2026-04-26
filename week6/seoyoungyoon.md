@@ -144,8 +144,9 @@ Cilium 위에 구축된 네트워크, 보안 관측 플랫폼
     cilium status
     
     ---------------
+    # 트러블슈팅
     # iptables 규칙이 없어서 10.96.0.1로 못 감
-    # kube-proxy를 skip했는데 Cilium이 아직 안 떠서 ClusterIP 라우팅이 안 되는 닭-달걀 문제예요.
+    # kube-proxy를 skip했는데 Cilium이 아직 안 떠서 ClusterIP 라우팅이 안 됨
     # 기존 Cilium 삭제
     helm uninstall cilium -n kube-system
     
