@@ -117,7 +117,7 @@ Apr 25 23:56:58.757: mj/client:50... (ID:41..) <- mj/server:80 (ID:13...) to-end
 
 > **Hubble UI**: 네임스페이스를 `mj`로 선택하면 client → server 초록색 화살표 확인 가능
 
-![forward](./minji.png)
+![forward](./image/minji.png)
 
 ---
 
@@ -155,4 +155,4 @@ hubble observe --namespace mj --verdict DROPPED -f
 
 > **Hubble UI**: client → server 빨간색 화살표로 변경됨
 
-![dropped](./minji2.png)
+![dropped](./image/minji2.png)
