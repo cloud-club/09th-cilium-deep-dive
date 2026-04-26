@@ -54,10 +54,13 @@ Cilium 위에 구축된 네트워크, 보안 관측 플랫폼
 
 <img width="1350" height="1230" alt="image" src="https://github.com/user-attachments/assets/621bfbf9-2a19-4636-b976-fde2ac378cb2" />
 
-
 ```bash
 패킷 발생 → eBPF가 커널에서 낚아채기 → Cilium Agent로 전달 → Hubble Relay가 클러스터 전체 집계 → CLI/UI로 조회
 ```
+
+perf ring buffer: 커널-유저스페이스 공유 메모리를 사용하기 때문에 오버헤드가 적음
+
+gRPC: 연결을 맺어두고 서버가 계속 데이터를 스트리밍해오기때문에 빠름
 
 - 설치과정
     
